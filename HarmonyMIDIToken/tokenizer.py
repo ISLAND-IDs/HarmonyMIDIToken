@@ -27,15 +27,15 @@ class HarmonyMIDIToken:
         s = stream.Score() # type: ignore
         melody_part = stream.Part() # type: ignore
         chord_part = stream.Part() # type: ignore
+        bass_part = stream.Part() # type: ignore
 
-        for index, i in enumerate(self.melody):
+        for i in self.melody:
             if i["note"] == '':
                 melody_part.append(note.Rest(quarterLength=i["duration"]))
             else:
                 melody_part.append(note.Note(i["note"], quarterLength=i["duration"]))
 
         for token in self.chords:
-            dur_map = {"1bar": 4.0, "half": 2.0, "4th": 1.0, "8th": 0.5, "16th": 0.25}
             if token["chord"] == "":
                 chord_part.append(note.Rest(quarterLength=token["duration"]))
             else:
@@ -55,9 +55,15 @@ class HarmonyMIDIToken:
                 
                 chord_part.append(music21_chord.Chord(converted_pitches, quarterLength=token["duration"]))
 
+        for i in self.bass:
+            if i["note"] == '':
+                bass_part.append(note.Rest(quarterLength=i["duration"]))
+            else:
+                bass_part.append(note.Note(i["note"], quarterLength=i["duration"]))
+
         s.insert(0, melody_part)
         s.insert(0, chord_part)
-
+        s.insert(0, bass_part)
         return s
 
     def _note_list_to_chord(self, note_tuple:tuple[pitch.Pitch]):
@@ -70,8 +76,8 @@ class HarmonyMIDIToken:
         chord = find_chords_from_notes(note_list)
         
         chord_name:str = chord[0].chord
-        if "/" not in chord_name: # 코드 이름에 슬래시가 없으면 베이스 음을 추가
-            return f"{chord_name}/{self._intpitch_to_note_name(note_tuple[0].midi)}" # TODO: 진짜 베이스 음이 아니라 그냥 첫 음을 베이스로 처리함 수정해야 함
+        if "/" in chord_name:
+            return chord_name.split("/")[0]  # 코드 이름만 반환
 
         return chord_name  
 
@@ -99,7 +105,8 @@ class HarmonyMIDIToken:
         return json.dumps({
             'BPM': self.bpm,
             'Melody': self.melody,
-            'Chord': self.chords
+            'Chord': self.chords,
+            'Bass': self.bass
         })
     
     def to_midi(self):
@@ -119,11 +126,13 @@ class HarmonyMIDIToken:
             if isinstance(e, note.Rest):
                 self.melody.append({'note': '', 'duration': e.quarterLength})
                 self.chords.append({'chord': '', 'duration': e.quarterLength})
+                self.bass.append({'note': '', 'duration': e.quarterLength})
             elif isinstance(e, music21_chord.Chord):
                 has_high_pitch = False
+                has_low_pitch = False
 
                 for i in e.pitches:
-                    if i.midi > 72: # C#6 이상인 음은 멜로디로 처리
+                    if i.midi > 72: # C#5 이상인 음은 멜로디로 처리
                         has_high_pitch = True
 
                         pitch_list = list(e.pitches)
@@ -134,6 +143,18 @@ class HarmonyMIDIToken:
                             'note': self._intpitch_to_note_name(i.midi),
                             'duration': e.quarterLength
                         })
+                    if i.midi < 60: # C4 이하인 음은 베이스로 처리
+                        has_low_pitch = True
+
+                        pitch_list = list(e.pitches)
+                        pitch_list.remove(i)  # 높은 음 제거
+                        e.pitches = tuple(pitch_list)
+
+                        self.bass.append({
+                            'note': self._intpitch_to_note_name(i.midi),
+                            'duration': e.quarterLength
+                        })
+
                 self.chords.append({
                     'chord': self._note_list_to_chord(e.pitches), # type: ignore
                     'duration': e.quarterLength
@@ -144,8 +165,13 @@ class HarmonyMIDIToken:
                         'note': '',
                         'duration': e.quarterLength
                     })
+                if not has_low_pitch:  # 낮은 음이 없으면 베이스는 Rest
+                    self.bass.append({
+                        'note': '',
+                        'duration': e.quarterLength
+                    })
             elif isinstance(e, note.Note):
-                if e.pitch.midi > 72: # C#6 이상인 음은 멜로디로 처리
+                if e.pitch.midi > 72: # C#5 이상인 음은 멜로디로 처리
                     self.melody.append({
                         'note': self._intpitch_to_note_name(e.pitch.midi),
                         'duration': e.quarterLength
@@ -161,13 +187,13 @@ class HarmonyMIDIToken:
                 else: # 분명 노트인데 멜로디가 아닌 경우
                     self.bass.append({
                         'bass': self._intpitch_to_note_name(e.pitch.midi),
-                        'duration': self._duration_to_note_length(e.quarterLength)
+                        'duration': e.quarterLength
                     }) # 베이스 노트로 처리
                     self.chords.append({
                         'chord': '',
-                        'duration': self._duration_to_note_length(e.quarterLength)
+                        'duration': e.quarterLength
                     })
                     self.melody.append({
                         'note': '',
-                        'duration': self._duration_to_note_length(e.quarterLength)
+                        'duration': e.quarterLength
                     })

@@ -1,0 +1,17 @@
+[project]
+name = "harmony-midi-token"
+version = "0.1.0"
+description = "A MIDI tokenizer based on HarmonyMIDIToken specification."
+authors = [
+  { name="rrayy", email="taejunham1@gmail.com" }
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "music21>=8.3.0","pychord>=1.2.2"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

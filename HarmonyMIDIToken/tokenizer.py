@@ -1,7 +1,5 @@
-from music21 import converter, note, chord as music21_chord, pitch, stream, midi
+from music21 import converter, note, chord as music21_chord, pitch, stream
 from pychord import find_chords_from_notes, Chord as pychord_chord
-from io import BytesIO
-import numpy as np
 import json
 import copy
 
@@ -83,20 +81,8 @@ class HarmonyMIDIToken:
 
     @property
     def token_id(self):
-        """vocab = {
-            "note_C4": 10,
-            "note_E4": 11,
-            "note_-": 12,
-            "duration_8th": 20,
-            "duration_4th": 21,
-            "chord_Cmaj7/C": 30,
-            "chord_-": 31,
-            "BPM_128": 40
-        }
-
-        output_token_ids = [40, 10, 20, 12, 20, 11, 21, 30, 21, 31, 21]"""
-        #idea = [self.bpm, self.melody.t, self.chords.t]
-        return 'HarmonyMIDIToken' # 숫자로 이루어진 ID로 변경 가능
+        """HarmonyMIDIToken에 대한 토큰 ID를 반환한다."""
+        return [self.bpm]
     
     def set_id(self, token_id) -> None:
         """HarmonyMIDIToken에 대한 토큰 ID를 설정한다."""

@@ -10,6 +10,7 @@ class HarmonyMIDIToken:
         self.bpm = 128 # 기본값
         self.melody:list[dict] = []
         self.chords:list[dict] = []
+        self.bass:list[dict] = []
         self._midi = None # MIDI 파일을 저장할 변수 최적화를 위해서임 진짜로 귀찮아서 날먹하는 거 아님
 
     def _intpitch_to_note_name(self, pitch_int):
@@ -92,7 +93,7 @@ class HarmonyMIDIToken:
         return 'HarmonyMIDIToken' # 숫자로 이루어진 ID로 변경 가능
     
     def set_id(self, token_id) -> None:
-        """Set the token ID for the HarmonyMIDIToken."""
+        """HarmonyMIDIToken에 대한 토큰 ID를 설정한다."""
 
     def to_json(self):
         return json.dumps({
@@ -153,14 +154,20 @@ class HarmonyMIDIToken:
                         'chord': '',
                         'duration': e.quarterLength
                     })
-                # else: # 분명 노트인데 멜로디가 아닌 경우
-                #     self.chords.append({
-                #         'chord': f"/{self._intpitch_to_note_name(e.pitch.midi)}",
-                #         'duration': self._duration_to_note_length(e.quarterLength)
-                #     }) # 베이스 노트로 처리
-                #     self.melody.append({
-                #         'note': '',
-                #         'duration': self._duration_to_note_length(e.quarterLength)
-                #     })
-
-            print(e, e.quarterLength, e.duration.type, e.duration.quarterLength)  # Debugging output
+                    self.bass.append({
+                        'bass': '',
+                        'duration': e.quarterLength
+                    })
+                else: # 분명 노트인데 멜로디가 아닌 경우
+                    self.bass.append({
+                        'bass': self._intpitch_to_note_name(e.pitch.midi),
+                        'duration': self._duration_to_note_length(e.quarterLength)
+                    }) # 베이스 노트로 처리
+                    self.chords.append({
+                        'chord': '',
+                        'duration': self._duration_to_note_length(e.quarterLength)
+                    })
+                    self.melody.append({
+                        'note': '',
+                        'duration': self._duration_to_note_length(e.quarterLength)
+                    })

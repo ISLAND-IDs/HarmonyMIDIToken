@@ -105,14 +105,12 @@ class HarmonyMIDIToken:
                     chord = pychord_chord(value)
 
                     tokens.append(self._note_name_to_intpitch(chord._root+"4"))
-                    try:
-                        tokens.append(quality_map[str(chord._quality)])
-                    except KeyError:
-                        tokens.append(-1)  # 알 수 없는 코드 품질은 -1로 처리
+                    tokens.append(quality_map[str(chord._quality)])
+                    
                     for j in chord._appended:
                         tokens.append(self._note_name_to_intpitch(j+"4"))
 
-                    tokens.append(int(i["duration"]*4)) # 4를 곱해서 양자화
+                tokens.append(int(i["duration"]*4)) # 4를 곱해서 양자화
         return tokens
     
     def _detokenize_note(self, token:list[int]) -> list[dict]:
@@ -123,6 +121,39 @@ class HarmonyMIDIToken:
         for idx, value in enumerate(token):
             if value == 10:  # Note 시작
                 output.append({"note":self._intpitch_to_note_name(token[idx+1]), "duration": token[idx+2]/4})
+
+        return output
+    
+    def _detokenize_chord(self, token:list[int]) -> list[dict]:
+        """토큰을 코드로 디토큰화합니다."""
+        output = []
+        inverse_quality_map = {
+            1: '', 
+            2: 'm',
+            3: '7',
+            4: 'M7',
+            5: 'm7',
+            6: 'dim',
+            7: 'aug',
+            8: 'sus2',
+            9: 'sus4',
+            10: 'dom7',
+            11: 'half-dim',
+            12: 'dim7',
+            13: 'power'
+        }
+
+        list_str:str = "|".join([str(i) for i in token])  # 리스트를 문자열로 변환
+        for i in list_str.split("20"):
+            if i == '':
+                continue
+
+            chord_list = i.split("|")
+
+            if chord_list[1] == '-1':
+                output.append({"chord": "", "duration": float(chord_list[-2])/4})
+            else:
+                output.append({"chord":self._intpitch_to_note_name(int(chord_list[1]))[:-1]+inverse_quality_map[int(chord_list[2])], "duration": float(chord_list[-2])/4})
 
         return output
 
@@ -145,7 +176,7 @@ class HarmonyMIDIToken:
         bass_tokens = token_id[token_id.index(300)+1:]
 
         self.melody = self._detokenize_note(melody_tokens)
-        self.chords = [{"chord": "Ebm", "duration": 0.5}, {"chord": "", "duration": 0.5}, {"chord": "Ebm", "duration": 0.25}]
+        self.chords = self._detokenize_chord(chords_tokens)
         self.bass = self._detokenize_note(bass_tokens)
 
     def to_json(self):

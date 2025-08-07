@@ -37,9 +37,6 @@ class HarmonyMIDIToken:
             if token["chord"] == "":
                 chord_part.append(note.Rest(quarterLength=token["duration"]))
             else:
-                if token["chord"].split("/")[0] == "":
-                    chord_part.append(note.Note(token["chord"].split("/")[1], quarterLength=token["duration"]))
-                    continue
                 chord = pychord_chord(token["chord"].split("/")[0])
                 pitches = chord.components_with_pitch(root_pitch=4)  # C4 기준으로 음표 생성
                 # 음표 이름을 Pitch 객체로 변환
@@ -200,83 +197,94 @@ class HarmonyMIDIToken:
         midi_data = converter.parse(midi_file)
         self._midi = copy.deepcopy(midi_data) # MIDI 데이터를 저장
 
+        melody_time = 0.0
+        chord_time = 0.0
+        bass_time = 0.0
+
         if midi_data.metronomeMarkBoundaries(): # 메트로놈 마크가 있는 경우 첫 번째 마크의 BPM을 사용
             self.bpm = int(midi_data.metronomeMarkBoundaries()[0][2].number)
 
-        print(midi_data.flat.notesAndRests)
-
-        for e in midi_data.flat.notesAndRests: # 모든 음표와 쉼표 가져옴
-            if isinstance(e, note.Rest):
-                self.melody.append({'note': '', 'duration': float(e.quarterLength)})
-                self.chords.append({'chord': '', 'duration': float(e.quarterLength)})
-                self.bass.append({'note': '', 'duration': float(e.quarterLength)})
-            elif isinstance(e, music21_chord.Chord):
-                has_high_pitch = False
-                has_low_pitch = False
-
+        for e in midi_data.flat.notes: # 모든 음표와 쉼표 가져옴
+            if isinstance(e, music21_chord.Chord):
                 for i in e.pitches:
                     if i.midi > 72: # C#5 이상인 음은 멜로디로 처리
-                        has_high_pitch = True
-
                         pitch_list = list(e.pitches)
                         pitch_list.remove(i)  # 높은 음 제거
                         e.pitches = tuple(pitch_list)
+
+                        if melody_time != float(e.offset):
+                            self.melody.append({
+                                'note': "",
+                                'duration': float(e.offset) - melody_time
+                            })
+
+                            melody_time = float(e.offset)
 
                         self.melody.append({
                             'note': self._intpitch_to_note_name(i.midi),
                             'duration': float(e.quarterLength)
                         })
-                    if i.midi < 60: # C4 이하인 음은 베이스로 처리
-                        has_low_pitch = True
 
+                        melody_time += float(e.quarterLength)
+                    if i.midi < 60: # C4 이하인 음은 베이스로 처리
                         pitch_list = list(e.pitches)
                         pitch_list.remove(i)  # 높은 음 제거
                         e.pitches = tuple(pitch_list)
+
+                        if bass_time != float(e.offset):
+                            self.bass.append({
+                                'note': "",
+                                'duration': float(e.offset) - bass_time
+                            })
+
+                            bass_time = float(e.offset)
+
 
                         self.bass.append({
                             'note': self._intpitch_to_note_name(i.midi),
                             'duration': float(e.quarterLength)
                         })
 
+                        bass_time += float(e.quarterLength)
+                
+                if chord_time != float(e.offset):
+                    self.chords.append({
+                        'chord': "",
+                        'duration': float(e.offset) - chord_time
+                    })
+                    chord_time = float(e.offset)
                 self.chords.append({
                     'chord': self._note_list_to_chord(e.pitches), # type: ignore
                     'duration': float(e.quarterLength)
                 })
-
-                if not has_high_pitch:  # 높은 음이 없으면 멜로디는 Rest
-                    self.melody.append({
-                        'note': '',
-                        'duration': float(e.quarterLength)
-                    })
-                if not has_low_pitch:  # 낮은 음이 없으면 베이스는 Rest
-                    self.bass.append({
-                        'note': '',
-                        'duration': float(e.quarterLength)
-                    })
+                chord_time += float(e.quarterLength)
             elif isinstance(e, note.Note):
                 if e.pitch.midi > 72: # C#5 이상인 음은 멜로디로 처리
+
+                    if melody_time != float(e.offset):
+                        self.melody.append({
+                            'note': "",
+                            'duration': float(e.offset) - melody_time
+                        })
+
+                        melody_time = float(e.offset)
+
                     self.melody.append({
                         'note': self._intpitch_to_note_name(e.pitch.midi),
                         'duration': float(e.quarterLength)
                     })
-                    self.chords.append({
-                        'chord': '',
-                        'duration': float(e.quarterLength)
-                    })
-                    self.bass.append({
-                        'note': '',
-                        'duration': float(e.quarterLength)
-                    })
+
+                    melody_time += float(e.quarterLength)
                 else: # 분명 노트인데 멜로디가 아닌 경우
+                    if bass_time != float(e.offset):
+                        self.bass.append({
+                            'note': "",
+                            'duration': float(e.offset) - bass_time
+                        })
+                        bass_time = float(e.offset)
                     self.bass.append({
                         'note': self._intpitch_to_note_name(e.pitch.midi),
                         'duration': float(e.quarterLength)
                     }) # 베이스 노트로 처리
-                    self.chords.append({
-                        'chord': '',
-                        'duration': float(e.quarterLength)
-                    })
-                    self.melody.append({
-                        'note': '',
-                        'duration': float(e.quarterLength)
-                    })
+
+                    bass_time += float(e.quarterLength)

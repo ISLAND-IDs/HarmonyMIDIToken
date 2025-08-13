@@ -63,12 +63,16 @@ class HarmonyMIDIToken:
 
     def _note_list_to_chord(self, note_tuple:tuple[pitch.Pitch]):
         """음표 이름 목록을 코드 표현으로 변환합니다."""
-        note_list = list(set([n.name.replace("-", "b") for n in note_tuple]))  # 중복 제거 및 b 플랫 처리
-        note_list.sort()
-        chord = find_chords_from_notes(note_list)
-
-        print(note_list)  # 디버깅용 출력
-        print(chord)  # 디버깅용 출력
+        # 음이 하나도 없으면 코드 없음 처리
+        if not note_list:
+            return "" 
+        try:
+            note_list = list(set([n.name.replace("-", "b") for n in note_tuple]))  # 중복 제거 및 b 플랫 처리
+            note_list.sort()
+            chord = find_chords_from_notes(note_list)
+        except Exception:
+            # pychord가 못 알아보는 조합이면 코드 없음 처리
+            return ""
 
         chord_name:str = chord[0].chord
         if "/" in chord_name:

@@ -110,7 +110,10 @@ class HarmonyMIDIToken:
                     chord = pychord_chord(value)
 
                     tokens.append(self._note_name_to_intpitch(chord._root+"4"))
-                    tokens.append(quality_map[str(chord._quality)])
+                    try:
+                        tokens.append(quality_map[str(chord._quality)])
+                    except KeyError:
+                        tokens.append(-1)
                     
                     for j in chord._appended:
                         tokens.append(self._note_name_to_intpitch(j+"4"))
@@ -145,7 +148,8 @@ class HarmonyMIDIToken:
             10: 'dom7',
             11: 'half-dim',
             12: 'dim7',
-            13: 'power'
+            13: 'power',
+            -1: ''
         }
 
         list_str:str = "|".join([str(i) for i in token])  # 리스트를 문자열로 변환

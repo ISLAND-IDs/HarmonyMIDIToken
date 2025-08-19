@@ -1,5 +1,6 @@
-from music21 import converter, note, chord as music21_chord, pitch, stream
+from music21 import note, chord as music21_chord, pitch, stream
 from pychord import find_chords_from_notes, Chord as pychord_chord
+from music21.midi import translate
 import json
 import copy
 
@@ -71,10 +72,10 @@ class HarmonyMIDIToken:
             # pychord가 못 알아보는 조합이면 코드 없음 처리
             return ""
         
-        # 음이 하나도 없으면 코드 없음 처리
-        if not note_list:
+        # 화음이 없으면 코드 없음 처리
+        if not note_list or not chord:
             return "" 
-
+        
         chord_name:str = chord[0].chord
         if "/" in chord_name:
             return chord_name.split("/")[0]  # 코드 이름만 반환
@@ -203,7 +204,7 @@ class HarmonyMIDIToken:
         return self._midi
     
     def set_midi(self, midi_file) -> None: #TODO: 멜로디, 코드, 베이스 리듬이 다르면 제대로 작동하지 않음
-        midi_data = converter.parse(midi_file)
+        midi_data = translate.midiFilePathToStream(midi_file)
         self._midi = copy.deepcopy(midi_data) # MIDI 데이터를 저장
 
         melody_time = 0.0

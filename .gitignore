@@ -1,5 +1,5 @@
 harmony_midi_token.egg-info
-__pycache__/
+__pycache__
 pypi_token.txt
 dist
 .vscode

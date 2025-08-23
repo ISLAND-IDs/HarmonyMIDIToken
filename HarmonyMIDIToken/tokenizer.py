@@ -196,13 +196,13 @@ class HarmonyMIDIToken:
             'Chord': self.chords,
             'Bass': self.bass
         })
-    
+
     def to_midi(self):
         if self._midi is None:
             self._midi = self._get_midi()
 
         return self._midi
-    
+
     def set_midi(self, midi_file) -> None: #TODO: 멜로디, 코드, 베이스 리듬이 다르면 제대로 작동하지 않음
         midi_data = translate.midiFilePathToStream(midi_file)
         self._midi = copy.deepcopy(midi_data) # MIDI 데이터를 저장

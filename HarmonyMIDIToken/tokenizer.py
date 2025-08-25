@@ -203,7 +203,7 @@ class HarmonyMIDIToken:
 
         return self._midi
 
-    def set_midi(self, midi_file) -> None: #TODO: 멜로디, 코드, 베이스 리듬이 다르면 제대로 작동하지 않음
+    def set_midi(self, midi_file) -> None:
         midi_data = translate.midiFilePathToStream(midi_file)
         self._midi = copy.deepcopy(midi_data) # MIDI 데이터를 저장
 
@@ -216,7 +216,9 @@ class HarmonyMIDIToken:
 
         for e in midi_data.flat.notes: # 모든 음표와 쉼표 가져옴
             if isinstance(e, music21_chord.Chord):
+                print(e.pitches)
                 for i in e.pitches:
+
                     if i.midi > 72: # C#5 이상인 음은 멜로디로 처리
                         pitch_list = list(e.pitches)
                         pitch_list.remove(i)  # 높은 음 제거
@@ -238,7 +240,7 @@ class HarmonyMIDIToken:
                         melody_time += float(e.quarterLength)
                     if i.midi < 60: # C4 이하인 음은 베이스로 처리
                         pitch_list = list(e.pitches)
-                        pitch_list.remove(i)  # 높은 음 제거
+                        pitch_list.remove(i)  # 낮은 음 제거
                         e.pitches = tuple(pitch_list)
 
                         if bass_time != float(e.offset):
@@ -249,13 +251,14 @@ class HarmonyMIDIToken:
 
                             bass_time = float(e.offset)
 
-
                         self.bass.append({
                             'note': self._intpitch_to_note_name(i.midi),
                             'duration': float(e.quarterLength)
                         })
 
                         bass_time += float(e.quarterLength)
+
+                print(f"offset: {e.offset} chord time: {chord_time}")
                 
                 if chord_time != float(e.offset):
                     self.chords.append({
@@ -270,7 +273,6 @@ class HarmonyMIDIToken:
                 chord_time += float(e.quarterLength)
             elif isinstance(e, note.Note):
                 if e.pitch.midi > 72: # C#5 이상인 음은 멜로디로 처리
-
                     if melody_time != float(e.offset):
                         self.melody.append({
                             'note': "",

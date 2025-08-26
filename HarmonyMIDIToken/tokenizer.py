@@ -257,20 +257,18 @@ class HarmonyMIDIToken:
                         })
 
                         bass_time += float(e.quarterLength)
-
-                print(f"offset: {e.offset} chord time: {chord_time}")
-                
-                if chord_time != float(e.offset):
+                if e.pitches: # 남은 음이 있으면 코드로 처리
+                    if chord_time != float(e.offset):
+                        self.chords.append({
+                            'chord': "",
+                            'duration': float(e.offset) - chord_time
+                        })
+                        chord_time = float(e.offset)
                     self.chords.append({
-                        'chord': "",
-                        'duration': float(e.offset) - chord_time
+                        'chord': self._note_list_to_chord(e.pitches), # type: ignore
+                        'duration': float(e.quarterLength)
                     })
-                    chord_time = float(e.offset)
-                self.chords.append({
-                    'chord': self._note_list_to_chord(e.pitches), # type: ignore
-                    'duration': float(e.quarterLength)
-                })
-                chord_time += float(e.quarterLength)
+                    chord_time += float(e.quarterLength)
             elif isinstance(e, note.Note):
                 if e.pitch.midi > 72: # C#5 이상인 음은 멜로디로 처리
                     if melody_time != float(e.offset):

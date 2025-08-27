@@ -20,4 +20,4 @@ with open('test/test.json', 'w') as f:
 # midi= MIDI.to_midi() # This should generate MIDI from the stored melody and chords
 # midi.write('midi', fp='test/test_output.mid')  # Save the generated MIDI to a file
 
-# print(MIDI.token_id)  # Print the token ID to verify the output
+print(MIDI.token_id)  # Print the token ID to verify the output

@@ -89,12 +89,59 @@ class HarmonyMIDIToken:
         pitch_obj = pitch.Pitch(note_name)
         return pitch_obj.midi
     
-    def _tokenize(self, data:list[dict]) -> list[int]:
-        """데이터를 토큰화합니다."""
-        tokens = []
+    def _tokenize(self, melody, chords, bass) -> list[list[int]]:
+        """
+        Melody, Chords, Bass 데이터를 LSTM 학습용 시퀀스로 변환합니다.
+        각 타임스텝은 [mel_pitch, mel_dur, chord_root, chord_quality, chord_dur, bass_pitch, bass_dur] 형태.
+        """
         quality_map = {
-            '':1, 'M': 1, 'm': 2, '7': 3, 'M7': 4, 'm7': 5, 'dim': 6, 'aug': 7,'sus2': 8, 'sus4': 9, "dom7": 10, "half-dim": 11, "dim7": 12, "power": 13,
+            '': 1, 'M': 2, 'm': 3, '7': 4, 'M7': 5, 'm7': 6,
+            'dim': 7, 'aug': 8, 'sus2': 9, 'sus4': 10,
+            "dom7": 11, "half-dim": 12, "dim7": 13, "power": 14,
         }
+
+        seq = []
+        max_len = max(len(melody), len(chords), len(bass))
+        for i in range(max_len):
+            # Melody
+            if i < len(melody) and melody[i]["note"] != "":
+                mel_pitch = self._note_name_to_intpitch(melody[i]["note"])
+                mel_dur   = int(melody[i]["duration"]*4)
+            else:
+                mel_pitch, mel_dur = 0, 0
+
+            # Chord
+            if i < len(chords) and chords[i]["chord"] != "":
+                chord_obj = pychord_chord(chords[i]["chord"])
+                root_pitch = self._note_name_to_intpitch(chord_obj._root+"4")
+                quality_id = quality_map.get(str(chord_obj._quality), 1)  # 기본은 1
+                chord_dur  = int(chords[i]["duration"]*4)
+            else:
+                root_pitch, quality_id, chord_dur = 0, 1, 0  # 빈 값은 quality=1
+
+            # Bass
+            if i < len(bass) and bass[i]["note"] != "":
+                bass_pitch = self._note_name_to_intpitch(bass[i]["note"])
+                bass_dur   = int(bass[i]["duration"]*4)
+            else:
+                bass_pitch, bass_dur = 0, 0
+
+            timestep = [mel_pitch, mel_dur, root_pitch, quality_id, chord_dur, bass_pitch, bass_dur]
+            seq.append(timestep)
+
+        return seq  # (T,7)
+#개선방향
+#한 타임스텝마다 [note_pitch, note_duration, chord_root, chord_quality, chord_duration, bass_pitch, bass_duration] 같은 고정 길이 feature 배열을 반환.
+#빈 값("")은 0으로 채우기.
+#duration은 *4 해서 정수로 양자화해도 되고, 그냥 float 그대로 둬도 괜찮아.
+
+#이렇게 바꾸면
+#반환되는 건 (T, 7) 배열 → LSTM 입력/출력에 바로 맞음.
+#학습할 때는 np.array(token_seq)로 묶어서 (samples, timesteps, features) 모양을 만들면 돼.
+#나중에 set_id / _detokenize도 이 구조에 맞게 바꿔야 해 (타임스텝 벡터 → JSON).
+
+#지금 네 데이터셋은 Melody/Chord/Bass가 항상 같은 길이야, 아니면 파트마다 길이가 다를 수도 있어?
+#그거에 따라 위 코드에서 max_len을 맞출지, 공통 timeline을 미리 quantize해서 병합할지 전략이 달라져.
 
         for i in data:
             key, value = next(iter(i.items()))
@@ -152,6 +199,48 @@ class HarmonyMIDIToken:
             13: 'power',
             -1: ''
         }
+
+    def _detokenize(self, seq: list[list[int]]) -> tuple[list[dict], list[dict], list[dict]]:
+        """
+        LSTM 출력 시퀀스(정수 배열)를 Melody, Chords, Bass JSON 형식으로 되돌립니다.
+        """
+        inverse_quality_map = {
+            1: '', 2: 'M', 3: 'm', 4: '7', 5: 'M7', 6: 'm7',
+            7: 'dim', 8: 'aug', 9: 'sus2', 10: 'sus4',
+            11: 'dom7', 12: 'half-dim', 13: 'dim7', 14: 'power'
+        }
+
+        melody, chords, bass = [], [], []
+        for step in seq:
+            mel_pitch, mel_dur, root_pitch, quality_id, chord_dur, bass_pitch, bass_dur = step
+
+            # Melody
+            if mel_pitch != 0:
+                melody.append({"note": self._intpitch_to_note_name(mel_pitch), "duration": mel_dur/4})
+            else:
+                if mel_dur > 0:
+                    melody.append({"note": "", "duration": mel_dur/4})
+
+            # Chord
+            if root_pitch != 0:
+                chord_name = self._intpitch_to_note_name(root_pitch)[:-1] + inverse_quality_map.get(quality_id, '')
+                chords.append({"chord": chord_name, "duration": chord_dur/4})
+            else:
+                if chord_dur > 0:
+                    chords.append({"chord": "", "duration": chord_dur/4})
+
+            # Bass
+            if bass_pitch != 0:
+                bass.append({"note": self._intpitch_to_note_name(bass_pitch), "duration": bass_dur/4})
+            else:
+                if bass_dur > 0:
+                    bass.append({"note": "", "duration": bass_dur/4})
+
+        return melody, chords, bass
+
+#이렇게 하면:
+#빈 문자열("")은 항상 quality_id=1로 매핑.
+#_detokenize가 (melody, chords, bass) 세 개의 JSON 리스트를 반환 → self.melody, self.chords, self.bass에 그대로 넣으면 됨.
 
         list_str:str = "|".join([str(i) for i in token])  # 리스트를 문자열로 변환
         for i in list_str.split("20"):

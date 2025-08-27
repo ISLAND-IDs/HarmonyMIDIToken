@@ -131,9 +131,13 @@ class HarmonyMIDIToken:
             if chord_time <= main_time:
                 try:
                     c = self.chords.pop(0)
-                    chord_obj =  pychord_chord(c["chord"])
-                    chord_root = self._note_name_to_intpitch(chord_obj._root+"4")
-                    chord_quality = quality_map.get(str(chord_obj._quality), 1)  # 기본은 1
+                    if c['chord'] != '':
+                        chord_obj =  pychord_chord(c["chord"])
+                        chord_root = self._note_name_to_intpitch(chord_obj._root+"4")
+                        chord_quality = quality_map.get(str(chord_obj._quality), 1)  # 기본은 1
+                    else:
+                        chord_root = 0
+                        chord_quality = 1
                     c_dur = int(c["duration"]*4)
                 except:
                     chord_end = True

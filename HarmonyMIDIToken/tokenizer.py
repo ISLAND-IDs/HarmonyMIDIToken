@@ -160,10 +160,17 @@ class HarmonyMIDIToken:
 
             chord_list = i.split("|")
 
-            if chord_list[1] == '-1':
-                output.append({"chord": "", "duration": float(chord_list[-2])/4})
-            else:
-                output.append({"chord":self._intpitch_to_note_name(int(chord_list[1]))[:-1]+inverse_quality_map[int(chord_list[2])], "duration": float(chord_list[-2])/4})
+            try:
+                if chord_list[1] == '-1':
+                    output.append({"chord": "", "duration": float(chord_list[-2])/4})
+                else:
+                    output.append({
+                        "chord": self._intpitch_to_note_name(int(chord_list[1]))[:-1] + inverse_quality_map[int(chord_list[2])],
+                        "duration": float(chord_list[-2])/4
+                    })
+            except (ValueError, IndexError) as e:
+                print(f"[detokenize_chord] 변환 실패: chord_list={chord_list}, 에러={e}")
+                continue
 
         return output
 

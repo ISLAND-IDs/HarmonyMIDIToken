@@ -1,5 +1,6 @@
-from music21 import converter, note, chord as music21_chord, pitch, stream
+from music21 import note, chord as music21_chord, pitch, stream
 from pychord import find_chords_from_notes, Chord as pychord_chord
+from music21.midi import translate
 import json
 import copy
 
@@ -63,9 +64,6 @@ class HarmonyMIDIToken:
 
     def _note_list_to_chord(self, note_tuple:tuple[pitch.Pitch]):
         """음표 이름 목록을 코드 표현으로 변환합니다."""
-        # 음이 하나도 없으면 코드 없음 처리
-        if not note_list:
-            return "" 
         try:
             note_list = list(set([n.name.replace("-", "b") for n in note_tuple]))  # 중복 제거 및 b 플랫 처리
             note_list.sort()
@@ -73,7 +71,11 @@ class HarmonyMIDIToken:
         except Exception:
             # pychord가 못 알아보는 조합이면 코드 없음 처리
             return ""
-
+        
+        # 화음이 없으면 코드 없음 처리
+        if not note_list or not chord:
+            return "" 
+        
         chord_name:str = chord[0].chord
         if "/" in chord_name:
             return chord_name.split("/")[0]  # 코드 이름만 반환
@@ -159,7 +161,10 @@ class HarmonyMIDIToken:
                     chord = pychord_chord(value)
 
                     tokens.append(self._note_name_to_intpitch(chord._root+"4"))
-                    tokens.append(quality_map[str(chord._quality)])
+                    try:
+                        tokens.append(quality_map[str(chord._quality)])
+                    except KeyError:
+                        tokens.append(-1)
                     
                     for j in chord._appended:
                         tokens.append(self._note_name_to_intpitch(j+"4"))
@@ -194,7 +199,8 @@ class HarmonyMIDIToken:
             10: 'dom7',
             11: 'half-dim',
             12: 'dim7',
-            13: 'power'
+            13: 'power',
+            -1: ''
         }
 
         list_str:str = "|".join([str(i) for i in token])  # 리스트를 문자열로 변환
@@ -204,10 +210,17 @@ class HarmonyMIDIToken:
 
             chord_list = i.split("|")
 
-            if chord_list[1] == '-1':
-                output.append({"chord": "", "duration": float(chord_list[-2])/4})
-            else:
-                output.append({"chord":self._intpitch_to_note_name(int(chord_list[1]))[:-1]+inverse_quality_map[int(chord_list[2])], "duration": float(chord_list[-2])/4})
+            try:
+                if chord_list[1] == '-1':
+                    output.append({"chord": "", "duration": float(chord_list[-2])/4})
+                else:
+                    output.append({
+                        "chord": self._intpitch_to_note_name(int(chord_list[1]))[:-1] + inverse_quality_map[int(chord_list[2])],
+                        "duration": float(chord_list[-2])/4
+                    })
+            except (ValueError, IndexError) as e:
+                print(f"[detokenize_chord] 변환 실패: chord_list={chord_list}, 에러={e}")
+                continue
 
         return output
 
@@ -240,15 +253,15 @@ class HarmonyMIDIToken:
             'Chord': self.chords,
             'Bass': self.bass
         })
-    
+
     def to_midi(self):
         if self._midi is None:
             self._midi = self._get_midi()
 
         return self._midi
-    
-    def set_midi(self, midi_file) -> None: #TODO: 멜로디, 코드, 베이스 리듬이 다르면 제대로 작동하지 않음
-        midi_data = converter.parse(midi_file)
+
+    def set_midi(self, midi_file) -> None:
+        midi_data = translate.midiFilePathToStream(midi_file)
         self._midi = copy.deepcopy(midi_data) # MIDI 데이터를 저장
 
         melody_time = 0.0
@@ -260,7 +273,9 @@ class HarmonyMIDIToken:
 
         for e in midi_data.flat.notes: # 모든 음표와 쉼표 가져옴
             if isinstance(e, music21_chord.Chord):
+                print(e.pitches)
                 for i in e.pitches:
+
                     if i.midi > 72: # C#5 이상인 음은 멜로디로 처리
                         pitch_list = list(e.pitches)
                         pitch_list.remove(i)  # 높은 음 제거
@@ -282,7 +297,7 @@ class HarmonyMIDIToken:
                         melody_time += float(e.quarterLength)
                     if i.midi < 60: # C4 이하인 음은 베이스로 처리
                         pitch_list = list(e.pitches)
-                        pitch_list.remove(i)  # 높은 음 제거
+                        pitch_list.remove(i)  # 낮은 음 제거
                         e.pitches = tuple(pitch_list)
 
                         if bass_time != float(e.offset):
@@ -293,28 +308,26 @@ class HarmonyMIDIToken:
 
                             bass_time = float(e.offset)
 
-
                         self.bass.append({
                             'note': self._intpitch_to_note_name(i.midi),
                             'duration': float(e.quarterLength)
                         })
 
                         bass_time += float(e.quarterLength)
-                
-                if chord_time != float(e.offset):
+                if e.pitches: # 남은 음이 있으면 코드로 처리
+                    if chord_time != float(e.offset):
+                        self.chords.append({
+                            'chord': "",
+                            'duration': float(e.offset) - chord_time
+                        })
+                        chord_time = float(e.offset)
                     self.chords.append({
-                        'chord': "",
-                        'duration': float(e.offset) - chord_time
+                        'chord': self._note_list_to_chord(e.pitches), # type: ignore
+                        'duration': float(e.quarterLength)
                     })
-                    chord_time = float(e.offset)
-                self.chords.append({
-                    'chord': self._note_list_to_chord(e.pitches), # type: ignore
-                    'duration': float(e.quarterLength)
-                })
-                chord_time += float(e.quarterLength)
+                    chord_time += float(e.quarterLength)
             elif isinstance(e, note.Note):
                 if e.pitch.midi > 72: # C#5 이상인 음은 멜로디로 처리
-
                     if melody_time != float(e.offset):
                         self.melody.append({
                             'note': "",

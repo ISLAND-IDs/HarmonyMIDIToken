@@ -24,7 +24,7 @@ class HarmonyMIDIToken:
     def _note_name_to_intpitch(self, note_name:str) -> int:
         """음표 이름을 MIDI 피치 정수로 변환합니다."""
         if note_name == '':
-            return -1
+            return 0
         pitch_obj = pitch.Pitch(note_name)
         return pitch_obj.midi
     

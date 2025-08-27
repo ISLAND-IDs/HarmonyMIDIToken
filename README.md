@@ -9,7 +9,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-**HarmonyMIDIToken**은 MIDI 토크나이저로, **pitch에 따른 악기(Instrument) 구분이 완료된 Future Bounce MIDI**를 음향학적으로 표현 가능한 토큰 시퀀스로 직렬화/역직렬화하는 것을 목표로 합니다.
+**HarmonyMIDIToken**은 MIDI 토크나이저로, **pitch에 따른 악기(Instrument) 구분이 완료된 Future Bounce MIDI**를 음향학적으로 표현 가능한 JSON과 LSTM을 위한 타임스텝 시퀀스로 직렬화/역직렬화하는 것을 목표로 합니다.
 패키지는 PyPI에 `harmony-midi-token` 이름으로 공개되어 있으며, Python 3.11 이상을 요구합니다. ([PyPI](https://pypi.org/project/harmony-midi-token/))
 
 ---

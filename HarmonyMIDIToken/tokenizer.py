@@ -161,7 +161,10 @@ class HarmonyMIDIToken:
             durs = list(set([m_dur, c_dur, b_dur]))
             durs = [item for item in durs if item != 0]
 
-            main_time += min(durs)
+            if durs:
+                main_time += min(durs)
+            
+                
             
             melody_time += m_dur
             chord_time += c_dur

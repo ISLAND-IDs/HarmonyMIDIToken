@@ -1,6 +1,6 @@
 [project]
 name = "harmony-midi-token"
-version = "1.0.0"
+version = "1.0.1"
 description = "The Brand New Midi Tokenizer based on Music21"
 authors = [
   { name="rrayy", email="taejunham1@gmail.com" }

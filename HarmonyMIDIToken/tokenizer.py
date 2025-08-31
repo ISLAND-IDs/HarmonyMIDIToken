@@ -190,7 +190,7 @@ class HarmonyMIDIToken:
             8: 'sus2',
             9: 'sus4',
             10: 'dom7',
-            11: 'half-dim',
+            11: 'm7+5',
             12: 'dim7',
             13: 'power'
         }

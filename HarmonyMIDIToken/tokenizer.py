@@ -102,7 +102,7 @@ class HarmonyMIDIToken:
         quality_map = {
             '': 1, 'M': 1, 'm': 2, '7': 3, 'M7': 4, 'm7': 5,
             'dim': 6, 'aug': 7, 'sus2': 8, 'sus4': 9,
-            "dom7": 10, "half-dim": 11, "dim7": 12, "power": 13,
+            "dom7": 10, "m7+5": 11, "dim7": 12, "power": 13,
         }
 
         seq = []

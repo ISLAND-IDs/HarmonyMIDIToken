@@ -164,8 +164,6 @@ class HarmonyMIDIToken:
             if durs:
                 main_time += min(durs)
             
-                
-            
             melody_time += m_dur
             chord_time += c_dur
             bass_time += b_dur
@@ -248,7 +246,6 @@ class HarmonyMIDIToken:
         for e in midi_data.flat.notes: # 모든 음표와 쉼표 가져옴
             if isinstance(e, music21_chord.Chord):
                 for i in e.pitches:
-
                     if i.midi > 72: # C#5 이상인 음은 멜로디로 처리
                         pitch_list = list(e.pitches)
                         pitch_list.remove(i)  # 높은 음 제거

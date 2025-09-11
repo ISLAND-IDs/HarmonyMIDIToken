@@ -14,7 +14,7 @@ decorator==5.2.1
 executing==2.2.0
 filelock==3.16.1
 Flask==3.0.3
-Flask-Cors==5.0.0
+Flask-Cors==6.0.0
 fonttools==4.57.0
 fsspec==2025.3.0
 -e git+https://github.com/ISLAND-IDs/HarmonyMIDIToken.git@8cdb44aeee4c5f5d6915cde7e7acab75f3f3d7fb#egg=harmony_midi_token

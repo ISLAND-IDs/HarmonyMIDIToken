@@ -245,46 +245,52 @@ class HarmonyMIDIToken:
 
         for e in midi_data.flat.notes: # 모든 음표와 쉼표 가져옴
             if isinstance(e, music21_chord.Chord):
-                for i in e.pitches:
+                original_pitches = list(e.pitches)
+                melody_pitches = []
+                bass_pitches = []
+                remaining_pitches = []
+                
+                # 피치들을 카테고리별로 분류
+                for i in original_pitches:
                     if i.midi > 72: # C#5 이상인 음은 멜로디로 처리
-                        pitch_list = list(e.pitches)
-                        pitch_list.remove(i)  # 높은 음 제거
-                        e.pitches = tuple(pitch_list)
-
-                        if melody_time != float(e.offset):
-                            self.melody.append({
-                                'note': "",
-                                'duration': float(e.offset) - melody_time
-                            })
-
-                            melody_time = float(e.offset)
-
+                        melody_pitches.append(i)
+                    elif i.midi < 60: # C4 이하인 음은 베이스로 처리
+                        bass_pitches.append(i)
+                    else:
+                        remaining_pitches.append(i)
+                
+                # 멜로디 처리
+                for i in melody_pitches:
+                    if melody_time != float(e.offset):
                         self.melody.append({
-                            'note': self._intpitch_to_note_name(i.midi),
-                            'duration': float(e.quarterLength)
+                            'note': "",
+                            'duration': float(e.offset) - melody_time
                         })
+                        melody_time = float(e.offset)
 
-                        melody_time += float(e.quarterLength)
-                    if i.midi < 60: # C4 이하인 음은 베이스로 처리
-                        pitch_list = list(e.pitches)
-                        pitch_list.remove(i)  # 낮은 음 제거
-                        e.pitches = tuple(pitch_list)
-
-                        if bass_time != float(e.offset):
-                            self.bass.append({
-                                'note': "",
-                                'duration': float(e.offset) - bass_time
-                            })
-
-                            bass_time = float(e.offset)
-
+                    self.melody.append({
+                        'note': self._intpitch_to_note_name(i.midi),
+                        'duration': float(e.quarterLength)
+                    })
+                    melody_time += float(e.quarterLength)
+                
+                # 베이스 처리
+                for i in bass_pitches:
+                    if bass_time != float(e.offset):
                         self.bass.append({
-                            'note': self._intpitch_to_note_name(i.midi),
-                            'duration': float(e.quarterLength)
+                            'note': "",
+                            'duration': float(e.offset) - bass_time
                         })
+                        bass_time = float(e.offset)
 
-                        bass_time += float(e.quarterLength)
-                if e.pitches: # 남은 음이 있으면 코드로 처리
+                    self.bass.append({
+                        'note': self._intpitch_to_note_name(i.midi),
+                        'duration': float(e.quarterLength)
+                    })
+                    bass_time += float(e.quarterLength)
+                
+                # 남은 음이 있으면 코드로 처리
+                if remaining_pitches:
                     if chord_time != float(e.offset):
                         self.chords.append({
                             'chord': "",
@@ -292,7 +298,7 @@ class HarmonyMIDIToken:
                         })
                         chord_time = float(e.offset)
                     self.chords.append({
-                        'chord': self._note_list_to_chord(e.pitches), # type: ignore
+                        'chord': self._note_list_to_chord(tuple(remaining_pitches)), # type: ignore
                         'duration': float(e.quarterLength)
                     })
                     chord_time += float(e.quarterLength)

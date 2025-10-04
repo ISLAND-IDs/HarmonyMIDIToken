@@ -105,6 +105,11 @@ class HarmonyMIDIToken:
             "dom7": 10, "m7+5": 11, "dim7": 12, "power": 13,
         }
 
+        # 원본 데이터 보존을 위해 복사본으로 작업
+        melody_copy = copy.deepcopy(self.melody)
+        chords_copy = copy.deepcopy(self.chords)
+        bass_copy = copy.deepcopy(self.bass)
+
         seq = []
         main_time = 0
 
@@ -119,7 +124,7 @@ class HarmonyMIDIToken:
         while not (melody_end and chord_end and bass_end):
             if melody_time <= main_time:
                 try:
-                    m = self.melody.pop(0)
+                    m = melody_copy.pop(0)
                     m_pitch = self._note_name_to_intpitch(m["note"])
                     m_dur = int(m["duration"]*4)
                 except:
@@ -130,7 +135,7 @@ class HarmonyMIDIToken:
 
             if chord_time <= main_time:
                 try:
-                    c = self.chords.pop(0)
+                    c = chords_copy.pop(0)
                     if c['chord'] != '':
                         chord_obj =  pychord_chord(c["chord"])
                         chord_root = self._note_name_to_intpitch(chord_obj._root+"4")
@@ -148,7 +153,7 @@ class HarmonyMIDIToken:
 
             if bass_time <= main_time:
                 try:
-                    b = self.bass.pop(0)
+                    b = bass_copy.pop(0)
                     b_pitch = self._note_name_to_intpitch(b["note"])
                     b_dur = int(b["duration"]*4)
                 except:
@@ -170,7 +175,6 @@ class HarmonyMIDIToken:
 
             seq.append([m_pitch, m_dur, chord_root, chord_quality, c_dur, b_pitch, b_dur])
 
-        self.set_id(seq) # 제거된 딕셔너리들 돌려주기
         return seq  # (T,7)
 
     def set_id(self, seq: list[list[int]]):
@@ -192,6 +196,11 @@ class HarmonyMIDIToken:
             12: 'dim7',
             13: 'power'
         }
+
+        # 기존 데이터 초기화하여 중복 방지
+        self.melody.clear()
+        self.chords.clear()
+        self.bass.clear()
 
         for step in seq:
             mel_pitch, mel_dur, root_pitch, quality_id, chord_dur, bass_pitch, bass_dur = step

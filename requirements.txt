@@ -29,7 +29,7 @@ numpy==2.3.3
 packaging==25.0
 pillow==11.3.0
 pychord==1.2.2
-Pygments==2.19.2
+Pygments==2.20.0
 pyparsing==3.2.5
 pyproject_hooks==1.2.0
 python-dateutil==2.9.0.post0

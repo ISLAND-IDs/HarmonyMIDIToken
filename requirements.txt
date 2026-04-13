@@ -27,7 +27,7 @@ music21==9.7.1
 nh3==0.3.0
 numpy==2.3.3
 packaging==25.0
-pillow==11.3.0
+pillow==12.2.0
 pychord==1.2.2
 Pygments==2.19.2
 pyparsing==3.2.5

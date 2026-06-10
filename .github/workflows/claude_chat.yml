@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Claude Code Action Official
-        uses: anthropics/claude-code-action@v0.0.31
+        uses: anthropics/claude-code-action@v1.0.74
         with:
           trigger_phrase: "@claude"  # 이 문구를 포함한 주석에서 트리거가 발생합니다.
           label_trigger: "claude"    # 라벨을 기준으로 트리거를 걸 수 있습니다.
